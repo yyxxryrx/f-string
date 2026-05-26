@@ -6,31 +6,41 @@ use nom::{AsChar, IResult, Parser};
 use proc_macro::{Delimiter, TokenStream, TokenTree};
 use quote::ToTokens;
 use std::fmt::Formatter;
+use syn::parse::ParseStream;
+use syn::spanned::Spanned;
 
 trait GetOpenAndClose {
     fn open(&self) -> &'static str;
     fn close(&self) -> &'static str;
 }
 
-impl GetOpenAndClose for Delimiter {
-    fn open(&self) -> &'static str {
-        match self {
-            Self::Brace => "{",
-            Self::Bracket => "[",
-            Self::Parenthesis => "(",
-            Self::None => "∅",
-        }
-    }
+macro_rules! impl_delimiter {
+    ($($t:ident)::*) => {
+        impl GetOpenAndClose for $($t)::* {
+            fn open(&self) -> &'static str {
+                match self {
+                    Self::Brace => "{",
+                    Self::Bracket => "[",
+                    Self::Parenthesis => "(",
+                    Self::None => "∅",
+                }
+            }
 
-    fn close(&self) -> &'static str {
-        match self {
-            Self::Brace => "}",
-            Self::Bracket => "]",
-            Self::Parenthesis => ")",
-            Self::None => "∅",
+            fn close(&self) -> &'static str {
+                match self {
+                    Self::Brace => "}",
+                    Self::Bracket => "]",
+                    Self::Parenthesis => ")",
+                    Self::None => "∅",
+                }
+            }
         }
-    }
+    };
 }
+
+impl_delimiter!(Delimiter);
+
+impl_delimiter!(proc_macro2::Delimiter);
 
 fn to_compact_string(ts: TokenStream) -> String {
     let mut result = String::new();
@@ -38,8 +48,33 @@ fn to_compact_string(ts: TokenStream) -> String {
     result
 }
 
+fn sub_span(a: proc_macro::Span, b: proc_macro::Span) -> (usize, usize) {
+    (
+        a.start().line().saturating_sub(b.end().line()),
+        a.start().column().saturating_sub(b.end().column()),
+    )
+}
+
+fn sub_span2(a: proc_macro2::Span, b: proc_macro2::Span) -> (usize, usize) {
+    (
+        a.start().line.saturating_sub(b.end().line),
+        a.start().column.saturating_sub(b.end().column),
+    )
+}
+
 fn format_tt(ts: TokenStream, out: &mut String) {
+    let mut prev_span: Option<proc_macro::Span> = None;
     for tt in ts {
+        let (l, c) = prev_span
+            .map(|s| sub_span(tt.span(), s))
+            .unwrap_or_default();
+        if l > 0 {
+            out.push_str(&"\n".repeat(l));
+        }
+        if c > 0 {
+            out.push_str(&" ".repeat(c));
+        }
+        prev_span = Some(tt.span());
         match tt {
             TokenTree::Group(group) => {
                 out.push_str(group.delimiter().open());
@@ -65,7 +100,7 @@ impl<T> syn::parse::Parse for PartialItem<T>
 where
     T: syn::parse::Parse,
 {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
         let item = input.parse::<T>()?;
         // 将剩余 Token 收集起来（不报错）
         let remaining = input.parse()?; // 或 input.step(|c| Ok((c.remaining_token_stream(), c)))
@@ -219,7 +254,10 @@ pub fn f(input: TokenStream) -> TokenStream {
         .map(|s| s.expr().unwrap())
         .collect::<Vec<syn::Expr>>();
 
-    let s = r.iter().map(|ty| ty.value(!args.is_empty())).collect::<String>();
+    let s = r
+        .iter()
+        .map(|ty| ty.value(!args.is_empty()))
+        .collect::<String>();
     let s = syn::LitStr::new(&s, proc_macro2::Span::call_site());
     if args.is_empty() {
         quote::quote! {
@@ -229,6 +267,149 @@ pub fn f(input: TokenStream) -> TokenStream {
         quote::quote! {
             format!(#s, #(#args),*)
         }
+    }
+    .into()
+}
+
+
+enum Ty2 {
+    Str(String),
+    Expr(syn::Expr, String),
+}
+
+impl Ty2 {
+    fn value(&self) -> String {
+        match self {
+            Self::Str(str) => str.clone(),
+            Self::Expr(.., r) => format!("{{{r}}}"),
+        }
+    }
+
+    fn expr(&self) -> Option<syn::Expr> {
+        match self {
+            Self::Str(..) => None,
+            Self::Expr(expr, ..) => Some(expr.clone()),
+        }
+    }
+
+    fn is_expr(&self) -> bool {
+        matches!(self, Self::Expr(..))
+    }
+}
+
+impl std::fmt::Display for Ty2 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Str(str) => write!(f, "String[{str}]"),
+            Self::Expr(expr, e) => write!(f, "Expr[{}{e}]", expr.to_token_stream().to_string()),
+        }
+    }
+}
+
+struct Ts {
+    results: Vec<Ty2>,
+}
+
+macro_rules! update {
+    ($t:ident, $s:ident, $r:ident) => {
+        let (l, c) = $s.map(|s| sub_span2($t.span(), s)).unwrap_or_default();
+        if l > 0 {
+            $r.push_str(&"\n".repeat(l));
+        } else if c > 0 {
+            $r.push_str(&" ".repeat(c));
+        }
+    };
+}
+
+fn p<'c, 'a>(
+    cursor: &syn::buffer::Cursor<'c>,
+    result: &mut String,
+    prev_span: Option<proc_macro2::Span>,
+) -> Result<(proc_macro2::Span, syn::buffer::Cursor<'c>), &'a str> {
+    if let Some((ident, cursor)) = cursor.ident() {
+        update!(ident, prev_span, result);
+        result.push_str(&ident.to_string());
+        return Ok((ident.span(), cursor));
+    }
+    if let Some((group_cursor, d, ds, cursor)) = cursor.any_group() {
+        update!(group_cursor, prev_span, result);
+        result.push_str(d.open());
+        p(&group_cursor, result, Some(ds.span()))?;
+        result.push_str(d.close());
+        return Ok((group_cursor.span(), cursor));
+    }
+    if let Some((p, cursor)) = cursor.punct() {
+        update!(p, prev_span, result);
+        result.push_str(&p.to_string());
+        return Ok((p.span(), cursor));
+    }
+    if let Some((lit, cursor)) = cursor.literal() {
+        update!(lit, prev_span, result);
+        result.push_str(&lit.to_string());
+        return Ok((lit.span(), cursor));
+    }
+    if let Some((life, cursor)) = cursor.lifetime() {
+        update!(life, prev_span, result);
+        result.push_str(&life.to_string());
+        return Ok((life.span(), cursor));
+    }
+    Err("Unknown type")
+}
+
+impl syn::parse::Parse for Ts {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut results = vec![];
+        let mut string = String::new();
+        let mut prev_span: Option<proc_macro2::Span> = None;
+        while !input.is_empty() {
+            if input.peek(syn::token::Brace) {
+                let content;
+                let s = syn::braced!(content in input).span;
+
+                update!(s, prev_span, string);
+                prev_span = Some(s.span());
+                results.push(Ty2::Str(string.clone()));
+                string.clear();
+
+                let expr = content.parse::<syn::Expr>()?;
+                let r = content.parse::<proc_macro2::TokenStream>()?.into();
+                results.push(Ty2::Expr(expr, to_compact_string(r)));
+                continue;
+            }
+            prev_span =
+                Some(input.step(|cursor| {
+                    p(&cursor, &mut string, prev_span).map_err(|e| cursor.error(e))
+                })?);
+        }
+        if !string.is_empty() {
+            results.push(Ty2::Str(string.clone()));
+        }
+        Ok(Self { results })
+    }
+}
+
+#[proc_macro]
+pub fn t(input: TokenStream) -> TokenStream {
+    let ts = syn::parse_macro_input!(input as Ts);
+    let results = ts.results;
+    let args = results
+        .iter()
+        .filter(|t| t.is_expr())
+        .map(|t| t.expr().unwrap())
+        .collect::<Vec<_>>();
+    let s = results.iter().map(|t| t.value()).collect::<String>();
+    let lit = syn::LitStr::new(&s, proc_macro2::Span::call_site());
+    match (args.is_empty(), s.is_empty()) {
+        (true, false) => quote::quote! {
+            String::from(#lit)
+        },
+        (true, true) => quote::quote! {
+            String::new()
+        },
+        (false, false) => quote::quote! {
+            format!(#lit, #(#args), *)
+        },
+        _ => unreachable!(),
     }
     .into()
 }

@@ -99,12 +99,14 @@ let max = f!("{std::i32::MAX}");
 
 ## 示例
 
-查看 [examples/basic.rs](examples/basic.rs) 获取完整的使用示例。
+查看 [examples/f_basic.rs](examples/f_basic.rs) 获取`f!`的完整的使用示例。
+
+查看 [examples/t_basic.rs](examples/t_basic.rs) 获取`t!`的完整的使用示例。
 
 运行示例：
 
 ```bash
-cargo run --example basic
+cargo run --example basic_f
 ```
 
 ## 工作原理

@@ -36,6 +36,15 @@ fn main() {
     // final: format!("You are at the {}", format!("point(x={}, y={})", p.x, p.y))
     let h = f!(r#"You are at the {f!("point(x={p.x}, y={p.y})")}"#);
 
+    // Result: "\""
+    // expand: format!("{}", upper(r#"""#))
+    let i = f!(r##"{upper(r#"""#)}"##);
+
+    // Result: "0000000100"
+    // expand: format!("{:0width$}", 100)
+    let width = 10;
+    let j = f!("{100:0width$}");
+
     println!("{a}");
     println!("{b}");
     println!("{c}");
@@ -47,4 +56,6 @@ fn main() {
     println!("{f}");
     println!("{g}");
     println!("{h}");
+    println!("{i}");
+    println!("{j}");
 }
