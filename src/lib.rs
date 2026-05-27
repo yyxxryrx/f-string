@@ -295,9 +295,15 @@ enum Ty2 {
 }
 
 impl Ty2 {
-    fn value(&self) -> String {
+    fn value(&self, is_format: bool) -> String {
         match self {
-            Self::Str(str) => str.clone(),
+            Self::Str(str) => {
+                if is_format {
+                    str.replace('{', "{{").replace('}', "}}")
+                } else {
+                    str.clone()
+                }
+            }
             Self::Expr(.., r) => format!("{{{r}}}"),
         }
     }
@@ -415,7 +421,6 @@ macro_rules! repeat {
         let ts_span = ts.last_span;
         update!(s, ts_span, $s);
         $s += Delimiter::$d.close();
-
     };
 }
 
@@ -478,7 +483,7 @@ pub fn t(input: TokenStream) -> TokenStream {
         .filter(|t| t.is_expr())
         .map(|t| t.expr().unwrap())
         .collect::<Vec<_>>();
-    let s = results.iter().map(|t| t.value()).collect::<String>();
+    let s = results.iter().map(|t| t.value(!args.is_empty())).collect::<String>();
     let lit = syn::LitStr::new(&s, proc_macro2::Span::call_site());
     match (args.is_empty(), s.is_empty()) {
         (true, false) => quote::quote! {
