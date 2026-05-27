@@ -271,7 +271,6 @@ pub fn f(input: TokenStream) -> TokenStream {
     .into()
 }
 
-
 enum Ty2 {
     Str(String),
     Expr(syn::Expr, String),
@@ -331,12 +330,15 @@ fn p<'c, 'a>(
         result.push_str(&ident.to_string());
         return Ok((ident.span(), cursor));
     }
-    if let Some((group_cursor, d, ds, cursor)) = cursor.any_group() {
-        update!(group_cursor, prev_span, result);
+    if let Some((mut group_cursor, d, ds, cursor)) = cursor.any_group() {
+        update!(ds, prev_span, result);
         result.push_str(d.open());
-        p(&group_cursor, result, Some(ds.span()))?;
+        let mut prev_span = group_cursor.span();
+        while !group_cursor.eof() {
+            (prev_span, group_cursor) = p(&group_cursor, result, Some(prev_span))?;
+        }
         result.push_str(d.close());
-        return Ok((group_cursor.span(), cursor));
+        return Ok((ds.span(), cursor));
     }
     if let Some((p, cursor)) = cursor.punct() {
         update!(p, prev_span, result);

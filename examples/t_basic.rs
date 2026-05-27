@@ -64,6 +64,7 @@ fn main() {
     // expand: format!("{:0width$}", 100)
     let width = 10;
     let j = t!({100:0width$});
+    let l = t!( a(a x b) );
 
     println!("{a}");
     println!("{b}");
