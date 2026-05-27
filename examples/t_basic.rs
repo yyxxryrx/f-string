@@ -14,11 +14,12 @@ impl Point {
 
 struct Person<'a> {
     name: &'a str,
+    age: u8,
 }
 
 impl<'a> Person<'a> {
-    fn new(name: &'a str) -> Self {
-        Self { name }
+    fn new(name: &'a str, age: u8) -> Self {
+        Self { name, age }
     }
 }
 
@@ -57,14 +58,14 @@ fn main() {
 
     // Result: "Hi Alice! How are you?"
     // expand: format!("Hi {}! How are you?", person.name)
-    let person = Person::new("Alice");
+    let person = Person::new("Alice", 12);
     let i = t!(Hi { person.name }! How are you?);
 
     // Result: "0000000100"
     // expand: format!("{:0width$}", 100)
     let width = 10;
     let j = t!({100:0width$});
-    let l = t!( a(a x b) );
+    let l = t!( a(a x b ) );
 
     println!("{a}");
     println!("{b}");
@@ -79,4 +80,7 @@ fn main() {
     println!("{h}");
     println!("{i}");
     println!("{j}");
+    println!("{l}");
+
+    let abc = t!(Hi! {person.name});
 }

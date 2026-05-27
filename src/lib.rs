@@ -48,6 +48,7 @@ fn to_compact_string(ts: TokenStream) -> String {
     result
 }
 
+/// 计算 `a` - `b` 的距离
 fn sub_span(a: proc_macro::Span, b: proc_macro::Span) -> (usize, usize) {
     (
         a.start().line().saturating_sub(b.end().line()),
@@ -55,10 +56,27 @@ fn sub_span(a: proc_macro::Span, b: proc_macro::Span) -> (usize, usize) {
     )
 }
 
+/// 计算 `a` - `b` 的距离
 fn sub_span2(a: proc_macro2::Span, b: proc_macro2::Span) -> (usize, usize) {
     (
         a.start().line.saturating_sub(b.end().line),
         a.start().column.saturating_sub(b.end().column),
+    )
+}
+
+/// 计算 `a` - `b` 的距离（开头相减）
+fn sub_start_span2(a: proc_macro2::Span, b: proc_macro2::Span) -> (usize, usize) {
+    (
+        a.start().line.saturating_sub(b.start().line),
+        a.start().column.saturating_sub(b.start().column),
+    )
+}
+
+/// 计算 `a` - `b` 的距离（结尾相减）
+fn sub_end_span2(a: proc_macro2::Span, b: proc_macro2::Span) -> (usize, usize) {
+    (
+        a.end().line.saturating_sub(b.end().line),
+        a.end().column.saturating_sub(b.end().column),
     )
 }
 
@@ -307,17 +325,23 @@ impl std::fmt::Display for Ty2 {
 
 struct Ts {
     results: Vec<Ty2>,
+    last_span: Option<proc_macro2::Span>,
 }
 
 macro_rules! update {
     ($t:ident, $s:ident, $r:ident) => {
         let (l, c) = $s.map(|s| sub_span2($t.span(), s)).unwrap_or_default();
+        update!(l: l, c: c, $r);
+    };
+    (l: $l: expr, c: $c: expr, $r:ident) => {
+        let l = $l;
+        let c = $c;
         if l > 0 {
             $r.push_str(&"\n".repeat(l));
         } else if c > 0 {
             $r.push_str(&" ".repeat(c));
         }
-    };
+    }
 }
 
 fn p<'c, 'a>(
@@ -358,12 +382,64 @@ fn p<'c, 'a>(
     Err("Unknown type")
 }
 
+macro_rules! repeat {
+    ($mac:ident, $d:ident, $input:expr, $res:ident, $s:ident, $prev:ident) => {
+        let content;
+        let s = syn::$mac!(content in $input).span;
+
+        update!(s, $prev, $s);
+        $prev = Some(s.span());
+        $s += Delimiter::$d.open();
+        $res.push(Ty2::Str($s.clone()));
+        $s.clear();
+
+        // 计算括号内开头的空白部分
+        let mut head = String::new();
+        let (l, c) = sub_start_span2(content.span(), s.span());
+        update!(l: l, c: c.saturating_sub(1), head);
+
+        let mut ts = content.parse::<Self>()?;
+
+        $res.push(Ty2::Str(head));
+
+        $res.append(&mut ts.results);
+
+        // 计算括号中末尾的空白部分
+        if let Some(last_span) = ts.last_span {
+            let mut tail = String::new();
+            let (l, c) = sub_end_span2(s.span(), last_span);
+            update!(l: l, c: c.saturating_sub(1), tail);
+            $res.push(Ty2::Str(tail));
+        }
+
+        let ts_span = ts.last_span;
+        update!(s, ts_span, $s);
+        $s += Delimiter::$d.close();
+
+    };
+}
+
 impl syn::parse::Parse for Ts {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut results = vec![];
         let mut string = String::new();
         let mut prev_span: Option<proc_macro2::Span> = None;
         while !input.is_empty() {
+            if input.peek(syn::token::Paren) {
+                repeat!(
+                    parenthesized,
+                    Parenthesis,
+                    input,
+                    results,
+                    string,
+                    prev_span
+                );
+                continue;
+            }
+            if input.peek(syn::token::Bracket) {
+                repeat!(bracketed, Bracket, input, results, string, prev_span);
+                continue;
+            }
             if input.peek(syn::token::Brace) {
                 let content;
                 let s = syn::braced!(content in input).span;
@@ -386,7 +462,10 @@ impl syn::parse::Parse for Ts {
         if !string.is_empty() {
             results.push(Ty2::Str(string.clone()));
         }
-        Ok(Self { results })
+        Ok(Self {
+            results,
+            last_span: prev_span,
+        })
     }
 }
 
