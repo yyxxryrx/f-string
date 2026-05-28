@@ -14,21 +14,47 @@ f-string = "0.1"
 
 ## Macros
 
-The library provides two macros:
-
-| Macro | Syntax                | Use case                              | State    |
-|-------|-----------------------|---------------------------------------|----------|
-| `f!`  | `f!("string {expr}")` | Familiar Python f-string syntax       | Unstable |
-| `t!`  | `t!(string {expr})`   | Native token syntax, no quotes needed | Stable   |
+| Macro | Syntax                | Use case                              | State    | Feature flag |
+|-------|-----------------------|---------------------------------------|----------|-------------|
+| `f!`  | `f!("string {expr}")` | Familiar Python f-string syntax       | Unstable | `f-macro`  |
+| `t!`  | `t!(string {expr})`   | Native token syntax, no quotes needed | Stable   | (default)  |
 
 Both macros expand to [`format!`](https://doc.rust-lang.org/std/macro.format.html) (or `String::from`/`String::new` when
 no expressions are present) at compile time, with no runtime overhead.
+
+> **`f-macro` feature**: `f!` is gated behind the `f-macro` feature and may have issues. Prefer `t!` when possible.
 
 ---
 
 ## Usage
 
+### `t!` (recommended) — token stream syntax
+
+```rust
+use f_string::t;
+
+let name = "world";
+let greeting = t!(Hello, {name}!);
+let pi = t!({ std::f64::consts::PI:.4 });
+let hex = t!({255:#x});
+```
+
+No quotes means no escaping for double quotes, and multi-line strings work naturally:
+
+```rust
+let s = t!(Line one
+Line two
+{"Line three"});
+```
+
 ### `f!` — quoted string literals
+
+Requires the `f-macro` feature in `Cargo.toml`:
+
+```toml
+[dependencies]
+f-string = { version = "0.1", features = ["f-macro"] }
+```
 
 ```rust
 use f_string::f;
@@ -43,24 +69,6 @@ Escape braces with `{{` and `}}`:
 
 ```rust
 let s = f!("{{braces}}"); // -> "{}"
-```
-
-### `t!` — token stream syntax
-
-```rust
-use f_string::t;
-
-let name = "world";
-let greeting = t!(Hello, {name}!);
-let pi = t!({ std::f64::consts::PI:.4 });
-```
-
-No quotes means no escaping for double quotes, and multi-line strings work naturally:
-
-```rust
-let s = t!(Line one
-Line two
-{"Line three"});
 ```
 
 ### Expressions and format specifiers
@@ -98,7 +106,7 @@ Both produce no runtime overhead — the expansion happens entirely at compile t
 ## Limitations
 
 - Only works with string literals (runtime strings cannot be used).
-- Requires Rust 2021 edition.
+- Requires Rust edition 2021 or later.
 - `f!` needs `{{`/`}}` to escape braces; `t!` cannot escape braces (use `{ "{" }` as a workaround).
 
 ---

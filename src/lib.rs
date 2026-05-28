@@ -243,6 +243,29 @@ fn parse_all(input: &str) -> IResult<&str, Vec<Ty>> {
     many1(parse).parse(input)
 }
 
+/// Python-like f-string formatting via string literals.
+///
+/// This macro parses a string literal and expands it into a [`format!`] call,
+/// with expressions in `{...}` interpolated directly.
+///
+/// ```rust
+/// use f_string::f;
+///
+/// let name = "world";
+/// let s = f!("Hello, {name}!");
+/// ```
+///
+/// Escape literal braces with `{{` and `}}`:
+///
+/// ```rust
+/// # use f_string::f;
+/// let s = f!("{{braces}}"); // -> "{}"
+/// ```
+///
+/// **Status: unstable.** The `f!` macro is gated behind the `f-macro` feature
+/// and may have parsing issues with certain expressions. Prefer the [`t!`] macro
+/// for new code — it is stable and does not require an extra feature flag or
+/// the `nom` dependency.
 #[cfg(feature = "f-macro")]
 #[proc_macro]
 pub fn f(input: TokenStream) -> TokenStream {
@@ -479,6 +502,37 @@ impl syn::parse::Parse for Ts {
     }
 }
 
+/// Python-like f-string formatting via token stream syntax.
+///
+/// This macro parses a raw token stream directly — no quotes needed. Text
+/// outside `{...}` is treated as string content, and expressions inside `{...}`
+/// are interpolated. The macro expands to a [`format!`] call at compile time.
+///
+/// ```rust
+/// use f_string::t;
+///
+/// let name = "world";
+/// let s = t!(Hello, {name}!);
+/// ```
+///
+/// Multi-line strings and double quotes work naturally:
+///
+/// ```rust
+/// # use f_string::t;
+/// let s = t!(Line one
+/// Line two
+/// {"Line three"});
+/// ```
+///
+/// Format specifiers are fully supported:
+///
+/// ```rust
+/// # use f_string::t;
+/// let s = t!({ std::f64::consts::PI:.4 });
+/// ```
+///
+/// Unlike [`f!`], `t!` does not require a feature flag and is considered stable.
+/// Braces cannot be escaped — use `{ "{" }` instead of `{{`.
 #[proc_macro]
 pub fn t(input: TokenStream) -> TokenStream {
     let ts = syn::parse_macro_input!(input as Ts);
