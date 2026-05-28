@@ -42,7 +42,7 @@ impl_delimiter!(Delimiter);
 
 impl_delimiter!(proc_macro2::Delimiter);
 
-fn to_compact_string(ts: TokenStream) -> String {
+fn to_string(ts: TokenStream) -> String {
     let mut result = String::new();
     format_tt(ts, &mut result);
     result
@@ -208,10 +208,7 @@ fn parse_expr(input: &str) -> IResult<&str, Ty> {
             nom::error::ErrorKind::Fail,
         ))
     })?;
-    Ok((
-        input,
-        Ty::Expr(expr.item, to_compact_string(expr.remaining.into())),
-    ))
+    Ok((input, Ty::Expr(expr.item, to_string(expr.remaining.into()))))
 }
 
 fn parse_str(input: &str) -> IResult<&str, Ty> {
@@ -455,8 +452,14 @@ impl syn::parse::Parse for Ts {
                 string.clear();
 
                 let expr = content.parse::<syn::Expr>()?;
-                let r = content.parse::<proc_macro2::TokenStream>()?.into();
-                results.push(Ty2::Expr(expr, to_compact_string(r)));
+                let r = if !content.is_empty() {
+                    content.parse::<syn::Token![:]>()?;
+                    let r = content.parse::<proc_macro2::TokenStream>()?.into();
+                    String::from(":") + &to_string(r)
+                } else {
+                    String::new()
+                };
+                results.push(Ty2::Expr(expr, r));
                 continue;
             }
             prev_span =
@@ -483,7 +486,10 @@ pub fn t(input: TokenStream) -> TokenStream {
         .filter(|t| t.is_expr())
         .map(|t| t.expr().unwrap())
         .collect::<Vec<_>>();
-    let s = results.iter().map(|t| t.value(!args.is_empty())).collect::<String>();
+    let s = results
+        .iter()
+        .map(|t| t.value(!args.is_empty()))
+        .collect::<String>();
     let lit = syn::LitStr::new(&s, proc_macro2::Span::call_site());
     match (args.is_empty(), s.is_empty()) {
         (true, false) => quote::quote! {
