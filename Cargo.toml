@@ -2,7 +2,9 @@
 authors = ["yyxxryrx@outlook.com"]
 name = "f-string"
 version = "0.1.0"
-edition = "2021"
+description = "Python-like f-string formatting macros for Rust"
+edition = "2024"
+rust-version = "1.88.0"
 readme = "README.md"
 repository = "https://github.com/yyxxryrx/f-string"
 license = "MIT"

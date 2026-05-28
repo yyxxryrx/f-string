@@ -15,9 +15,9 @@ f-string = "0.1"
 ## Macros
 
 | Macro | Syntax                | Use case                              | State    | Feature flag |
-|-------|-----------------------|---------------------------------------|----------|-------------|
-| `f!`  | `f!("string {expr}")` | Familiar Python f-string syntax       | Unstable | `f-macro`  |
-| `t!`  | `t!(string {expr})`   | Native token syntax, no quotes needed | Stable   | (default)  |
+|-------|-----------------------|---------------------------------------|----------|--------------|
+| `f!`  | `f!("string {expr}")` | Familiar Python f-string syntax       | Unstable | `f-macro`    |
+| `t!`  | `t!(string {expr})`   | Native token syntax, no quotes needed | Stable   | (default)    |
 
 Both macros expand to [`format!`](https://doc.rust-lang.org/std/macro.format.html) (or `String::from`/`String::new` when
 no expressions are present) at compile time, with no runtime overhead.
@@ -106,7 +106,7 @@ Both produce no runtime overhead — the expansion happens entirely at compile t
 ## Limitations
 
 - Only works with string literals (runtime strings cannot be used).
-- Requires Rust edition 2021 or later.
+- Requires Rust edition 2024 or later.
 - `f!` needs `{{`/`}}` to escape braces; `t!` cannot escape braces (use `{ "{" }` as a workaround).
 
 ---
