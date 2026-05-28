@@ -59,4 +59,11 @@ fn expr_format() {
         t!({Point::new(2, -3):#?}),
         format!("{:#?}", Point::new(2, -3))
     );
+    assert_eq!(t! {
+        <div>
+        <p class="title">Point</p>
+        <span>x={p.x}</span>
+        <span>y={p.y}</span>
+        </div>
+    }, format!("<div>\n<p class=\"title\">Point</p>\n<span>x={}</span>\n<span>y={}</span>\n</div>", p.x, p.y))
 }
