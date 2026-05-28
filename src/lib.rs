@@ -541,6 +541,21 @@ impl syn::parse::Parse for Ts {
 ///
 /// Unlike [`f!`], `t!` does not require a feature flag and is considered stable.
 /// Braces cannot be escaped — use `{ "{" }` instead of `{{`.
+///
+/// ### Constant folding for string literals
+///
+/// If the expression inside `{...}` is a bare string literal with no format
+/// specifier, it is folded directly into the surrounding string at compile
+/// time rather than being passed as a runtime argument:
+///
+/// ```rust
+/// # use f_string::t;
+/// let name = "ferris";
+/// // Folded at compile time — no format! call:
+/// let a = t!(Hello, {"world"}!);
+/// // Runtime interpolation via format!:
+/// let b = t!(Hello, {name}!);
+/// ```
 #[proc_macro]
 pub fn t(input: TokenStream) -> TokenStream {
     let ts = syn::parse_macro_input!(input as Ts);

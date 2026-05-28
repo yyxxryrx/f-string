@@ -101,6 +101,15 @@ let s = t!(Point: {
 
 Both produce no runtime overhead — the expansion happens entirely at compile time.
 
+Additionally, when `t!` encounters a bare string literal with no format specifier
+inside `{...}`, it folds the string content directly into the surrounding string
+at compile time, eliminating even the `format!` call overhead:
+
+```rust
+// This expands to String::from("Hello, world!") — no format! call at all.
+let s = t!(Hello, {"world"}!);
+```
+
 ---
 
 ## Limitations
