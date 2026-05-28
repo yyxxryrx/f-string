@@ -1,8 +1,10 @@
-use nom::branch::alt;
-use nom::bytes::complete::tag;
-use nom::bytes::complete::take_while;
-use nom::multi::many1;
-use nom::{AsChar, IResult, Parser};
+#[cfg(feature = "f-macro")]
+use nom::{
+    branch::alt,
+    bytes::complete::{tag, take_while},
+    multi::many1,
+    AsChar, IResult, Parser,
+};
 use proc_macro::{Delimiter, TokenStream, TokenTree};
 use quote::ToTokens;
 use std::fmt::Formatter;
@@ -106,6 +108,7 @@ fn format_tt(ts: TokenStream, out: &mut String) {
     }
 }
 
+#[cfg(feature = "f-macro")]
 struct PartialItem<T>
 where
     T: syn::parse::Parse,
@@ -114,6 +117,7 @@ where
     remaining: proc_macro2::TokenStream,
 }
 
+#[cfg(feature = "f-macro")]
 impl<T> syn::parse::Parse for PartialItem<T>
 where
     T: syn::parse::Parse,
@@ -126,6 +130,7 @@ where
     }
 }
 
+#[cfg(feature = "f-macro")]
 enum Ty {
     BracketLeft,
     BracketRight,
@@ -135,18 +140,7 @@ enum Ty {
     None,
 }
 
-impl std::fmt::Display for Ty {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::BracketLeft => write!(f, "BracketLeft[{{]"),
-            Self::BracketRight => write!(f, "BracketRight[}}]"),
-            Self::Str(s) => write!(f, "Str[{s}]"),
-            Self::Expr(e, r) => write!(f, "Expr[{}{r}]", e.to_token_stream()),
-            Self::None => write!(f, ""),
-        }
-    }
-}
-
+#[cfg(feature = "f-macro")]
 impl Ty {
     fn value(&self, in_format: bool) -> String {
         match self {
@@ -170,16 +164,19 @@ impl Ty {
     }
 }
 
+#[cfg(feature = "f-macro")]
 fn parse_bracket_left(input: &str) -> IResult<&str, Ty> {
     let (input, _) = tag("{{")(input)?;
     Ok((input, Ty::BracketLeft))
 }
 
+#[cfg(feature = "f-macro")]
 fn parse_bracket_right(input: &str) -> IResult<&str, Ty> {
     let (input, _) = tag("}}")(input)?;
     Ok((input, Ty::BracketRight))
 }
 
+#[cfg(feature = "f-macro")]
 fn take_content(input: &str) -> (&str, &str) {
     let mut depth = 1;
     let mut content_length = 0;
@@ -199,6 +196,7 @@ fn take_content(input: &str) -> (&str, &str) {
     (&input[ex_length..], &input[..content_length])
 }
 
+#[cfg(feature = "f-macro")]
 fn parse_expr(input: &str) -> IResult<&str, Ty> {
     let (input, _) = tag("{")(input)?;
     let (input, expr) = take_content(input);
@@ -211,6 +209,7 @@ fn parse_expr(input: &str) -> IResult<&str, Ty> {
     Ok((input, Ty::Expr(expr.item, to_string(expr.remaining.into()))))
 }
 
+#[cfg(feature = "f-macro")]
 fn parse_str(input: &str) -> IResult<&str, Ty> {
     if input.starts_with('{') || input.starts_with('}') {
         return Err(nom::Err::Failure(nom::error::Error::new(
@@ -228,6 +227,7 @@ fn parse_str(input: &str) -> IResult<&str, Ty> {
     Ok((input, Ty::Str(value.to_string())))
 }
 
+#[cfg(feature = "f-macro")]
 fn parse(input: &str) -> IResult<&str, Ty> {
     alt((
         parse_bracket_left,
@@ -238,10 +238,12 @@ fn parse(input: &str) -> IResult<&str, Ty> {
     .parse(input)
 }
 
+#[cfg(feature = "f-macro")]
 fn parse_all(input: &str) -> IResult<&str, Vec<Ty>> {
     many1(parse).parse(input)
 }
 
+#[cfg(feature = "f-macro")]
 #[proc_macro]
 pub fn f(input: TokenStream) -> TokenStream {
     let value = match syn::parse::<syn::LitStr>(input.clone()) {

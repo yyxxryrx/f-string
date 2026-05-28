@@ -1,3 +1,4 @@
+#![cfg(feature = "f-macro")]
 use f_string::f;
 
 #[derive(Debug)]
