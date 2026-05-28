@@ -1,9 +1,9 @@
 #[cfg(feature = "f-macro")]
 use nom::{
+    AsChar, IResult, Parser,
     branch::alt,
     bytes::complete::{tag, take_while},
     multi::many1,
-    AsChar, IResult, Parser,
 };
 use proc_macro::{Delimiter, TokenStream, TokenTree};
 use quote::ToTokens;
@@ -484,7 +484,15 @@ impl syn::parse::Parse for Ts {
                 } else {
                     String::new()
                 };
-                results.push(Ty2::Expr(expr, r));
+                match &expr {
+                    syn::Expr::Lit(lit) => match lit.lit {
+                        syn::Lit::Str(ref str) if r.is_empty() => {
+                            results.push(Ty2::Str(str.value()))
+                        }
+                        _ => results.push(Ty2::Expr(expr, r)),
+                    },
+                    _ => results.push(Ty2::Expr(expr, r)),
+                };
                 continue;
             }
             prev_span =
