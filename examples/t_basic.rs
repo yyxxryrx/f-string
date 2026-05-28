@@ -59,7 +59,7 @@ fn main() {
     // Result: "Hi Alice! How are you?"
     // expand: format!("Hi {}! How are you?", person.name)
     let person = Person::new("Alice", 12);
-    let i = t!(Hi { person.name }! How are you?);
+    let i = t!(I am { person.name }. I am { person.age } years old.);
 
     // Result: "0000000100"
     // expand: format!("{:0width$}", 100)
@@ -81,6 +81,4 @@ fn main() {
     println!("{i}");
     println!("{j}");
     println!("{l}");
-
-    let abc = t!(Hi! {person.name});
 }
