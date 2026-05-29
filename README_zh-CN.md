@@ -7,6 +7,9 @@
 f-string = "0.1"
 ```
 
+`unindent`模块改编自MIT授权的[`textwrap`](https://crates.io/crates/textwrap) crate。
+
+
 ---
 
 ## 宏
@@ -16,7 +19,8 @@ f-string = "0.1"
 | `f!` | `f!("字符串 {表达式}")` | 带引号的字符串字面量语法    | 不稳定 | `f-macro` |
 | `t!` | `t!(字符串 {表达式})`   | 原生 Token 流，无需引号 | 稳定  | (默认)      |
 
-两种宏均在编译时展开为 [`format!`](https://doc.rust-lang.org/std/macro.format.html)（无表达式时展开为 `String::from` / `String::new`），无运行时开销。
+两种宏均在编译时展开为 [`format!`](https://doc.rust-lang.org/std/macro.format.html)（无表达式时展开为 `String::from` /
+`String::new`），无运行时开销。
 
 > **注意**：`f!` 需要启用 `f-macro` 特性，目前仍不稳定，建议优先使用 `t!`。
 
@@ -35,12 +39,22 @@ let pi = t!({ std::f64::consts::PI:.4 });
 let hex = t!({255:#x});
 ```
 
-无需引号，天然支持多行和双引号：
+无需引号，天然支持多行和双引号。公共前导缩进会被自动去除，排版不影响输出：
 
 ```rust
-let s = t!(第一行
-第二行
-{"第三行"});
+let s = t!(
+    第一行
+    第二行
+);
+assert_eq!(s, "第一行\n第二行");
+
+// 相对缩进被保留：
+let s = t!(
+    第一行
+      缩进行
+    第三行
+);
+assert_eq!(s, "第一行\n  缩进行\n第三行");
 ```
 
 ### `f!`
@@ -93,7 +107,8 @@ let s = t!(坐标: {
 
 两者均在编译时完成展开，无运行时开销。
 
-此外，当 `t!` 中 `{...}` 内是一个不带格式化参数的字符串字面量时，该字符串会在编译时直接拼入周围的字符串中，连 `format!` 调用都省去：
+此外，当 `t!` 中 `{...}` 内是一个不带格式化参数的字符串字面量时，该字符串会在编译时直接拼入周围的字符串中，连 `format!`
+调用都省去：
 
 ```rust
 // 展开为 String::from("Hello, world!")，完全没有 format! 调用。

@@ -10,6 +10,8 @@ A procedural macro library that provides Python-like f-string formatting for Rus
 f-string = "0.1"
 ```
 
+The `unindent` module is adapted from the [`textwrap`](https://crates.io/crates/textwrap) crate, MIT-licensed.
+
 ---
 
 ## Macros
@@ -39,12 +41,24 @@ let pi = t!({ std::f64::consts::PI:.4 });
 let hex = t!({255:#x});
 ```
 
-No quotes means no escaping for double quotes, and multi-line strings work naturally:
+No quotes means no escaping for double quotes, and multi-line strings work naturally.
+Common leading indentation is automatically stripped — you can align continuation
+lines without affecting the output:
 
 ```rust
-let s = t!(Line one
-Line two
-{"Line three"});
+let s = t!(
+    Hello
+    World
+);
+assert_eq!(s, "Hello\nWorld");
+
+// Relative indentation is preserved:
+let s = t!(
+    Hello
+      indented
+    World
+);
+assert_eq!(s, "Hello\n  indented\nWorld");
 ```
 
 ### `f!` — quoted string literals

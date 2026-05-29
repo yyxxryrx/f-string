@@ -543,13 +543,30 @@ impl syn::parse::Parse for Ts {
 /// let s = t!(Hello, {name}!);
 /// ```
 ///
-/// Multi-line strings and double quotes work naturally:
+/// Multi-line strings and double quotes work naturally.
+/// Common leading indentation is automatically stripped (like Python's
+/// `textwrap.dedent`), so you can align continuation lines without
+/// affecting the output:
 ///
 /// ```rust
 /// # use f_string::t;
-/// let s = t!(Line one
-/// Line two
-/// {"Line three"});
+/// let s = t!(
+///     Hello
+///     World
+/// );
+/// assert_eq!(s, "Hello\nWorld");
+/// ```
+///
+/// Relative indentation is preserved:
+///
+/// ```rust
+/// # use f_string::t;
+/// let s = t!(
+///     Hello
+///       indented
+///     World
+/// );
+/// assert_eq!(s, "Hello\n  indented\nWorld");
 /// ```
 ///
 /// Format specifiers are fully supported:
