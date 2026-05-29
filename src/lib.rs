@@ -31,8 +31,6 @@ use nom::{
     multi::many1,
 };
 use proc_macro::{Delimiter, TokenStream, TokenTree};
-use quote::ToTokens;
-use std::fmt::Formatter;
 use syn::parse::ParseStream;
 use syn::spanned::Spanned;
 
@@ -364,15 +362,6 @@ impl Ty2 {
 
     fn is_expr(&self) -> bool {
         matches!(self, Self::Expr(..))
-    }
-}
-
-impl std::fmt::Display for Ty2 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Str(str) => write!(f, "String[{str}]"),
-            Self::Expr(expr, e) => write!(f, "Expr[{}{e}]", expr.to_token_stream().to_string()),
-        }
     }
 }
 
