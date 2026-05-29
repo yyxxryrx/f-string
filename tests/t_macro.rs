@@ -13,6 +13,21 @@ fn pure_text() {
         ),
         String::from("First line.\nSecond Line.")
     );
+    assert_eq!(
+        t!(First line.
+    Second line.),
+        String::from("First line.\n    Second line.")
+    );
+    assert_eq!(
+        t! {
+            List
+
+            - Level 1
+              - Level 2
+            - Level 1
+        },
+        String::from("List\n\n- Level 1\n  - Level 2\n- Level 1")
+    );
     assert_eq!(t!({ "{" } Expr { "}" }), String::from("{ Expr }"));
 }
 

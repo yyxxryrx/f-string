@@ -237,7 +237,7 @@ fn parse(input: &str) -> IResult<&str, Ty> {
         parse_expr,
         parse_str,
     ))
-        .parse(input)
+    .parse(input)
 }
 
 #[cfg(feature = "f-macro")]
@@ -275,12 +275,12 @@ pub fn f(input: TokenStream) -> TokenStream {
         Ok(v) => v,
         Err(e) => return e.to_compile_error().into(),
     }
-        .value();
+    .value();
     if value.is_empty() {
         return quote::quote! {
             String::new()
         }
-            .into();
+        .into();
     }
     let r = match parse_all(&value) {
         Ok((_, tys)) => tys,
@@ -310,7 +310,7 @@ pub fn f(input: TokenStream) -> TokenStream {
             format!(#s, #(#args),*)
         }
     }
-        .into()
+    .into()
 }
 
 enum Ty2 {
@@ -474,7 +474,9 @@ impl syn::parse::Parse for Ts {
                 continue;
             }
             if input.peek(syn::token::Bracket) {
-                repeat!(bracketed, Bracket, input, results, string, prev_span, first_span);
+                repeat!(
+                    bracketed, Bracket, input, results, string, prev_span, first_span
+                );
                 continue;
             }
             if input.peek(syn::token::Brace) {
@@ -587,10 +589,17 @@ pub fn t(input: TokenStream) -> TokenStream {
         .iter()
         .map(|t| t.value(!args.is_empty()))
         .collect::<String>();
-    if let Some(first_span) = ts.first_span {
+
+    let span = proc_macro2::Span::call_site();
+
+    if let Some(first_span) = ts.first_span
+        && span.start().line < first_span.start().line
+    {
         s.insert_str(0, &" ".repeat(first_span.start().column))
     }
+
     let s = unindent::dedent(&s);
+
     let lit = syn::LitStr::new(&s, proc_macro2::Span::call_site());
     match (args.is_empty(), s.is_empty()) {
         (true, false) => quote::quote! {
@@ -604,5 +613,5 @@ pub fn t(input: TokenStream) -> TokenStream {
         },
         _ => unreachable!(),
     }
-        .into()
+    .into()
 }
