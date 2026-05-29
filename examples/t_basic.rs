@@ -33,8 +33,8 @@ fn main() {
     let b = t!(Time is {std::time::SystemTime::now():?}); // Result: "Time is SystemTime { intervals: ... }", expand: format!("{:?}", std::time::SystemTime::now());
     let c = t!({ upper("hi") }); // Result: "HI", expand: format!("{}", upper("hi"))
 
-    // Result: "The first line\nThe second line\nThe third line\nThe end"
-    // expand: format!("The first line\nThe second line\n{}The end", "The third line")
+    // Result: "The first line\n    The second line\n    The third line\n    The end"
+    // expand: String::from("The first line\n    The second line\n    The third line\n    The end")
     let d = t!(The first line
     The second line
     {"The third line"}
@@ -56,8 +56,8 @@ fn main() {
         t!(point(x={p.x}, y={p.y}))
     });
 
-    // Result: "Hi Alice! How are you?"
-    // expand: format!("Hi {}! How are you?", person.name)
+    // Result: "I am Alice. I am 12 years old."
+    // expand: format!("I am {}. I am {} years old.", person.name, person.age)
     let person = Person::new("Alice", 12);
     let i = t!(I am { person.name }. I am { person.age } years old.);
 
