@@ -5,7 +5,7 @@
 //!
 //! | Macro | Syntax | Use case |
 //! |---|---|---|
-//! | [`f!`] | `f!("string {expr}")` | Quoted string literals, like Python f-strings |
+//! | `f!` | `f!("string {expr}")` | Quoted string literals (requires `f-macro` feature) |
 //! | [`t!`] | `t!(string {expr})` | Native token syntax, no quotes needed |
 //!
 //! Both macros expand at compile time with zero runtime overhead.
@@ -599,7 +599,7 @@ impl syn::parse::Parse for Ts {
 /// let s = t!({ std::f64::consts::PI:.4 });
 /// ```
 ///
-/// Unlike [`f!`], `t!` does not require a feature flag and is considered stable.
+/// Unlike `f!`, `t!` does not require a feature flag and is considered stable.
 /// Braces cannot be escaped — use `{ "{" }` instead of `{{`.
 ///
 /// ### Constant folding for string literals
