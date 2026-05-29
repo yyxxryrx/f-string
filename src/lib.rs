@@ -553,6 +553,30 @@ impl syn::parse::Parse for Ts {
     }
 }
 
+fn parse_t(input: TokenStream) -> syn::Result<(String, Vec<syn::Expr>)> {
+    let ts = syn::parse::<Ts>(input)?;
+    let results = ts.results;
+    let args = results
+        .iter()
+        .filter(|t| t.is_expr())
+        .map(|t| t.expr().unwrap())
+        .collect::<Vec<_>>();
+    let mut s = results
+        .iter()
+        .map(|t| t.value(!args.is_empty()))
+        .collect::<String>();
+
+    let span = proc_macro2::Span::call_site();
+
+    if let Some(first_span) = ts.first_span
+        && span.start().line < first_span.start().line
+    {
+        s.insert_str(0, &" ".repeat(first_span.start().column))
+    }
+
+    Ok((unindent::dedent(&s), args))
+}
+
 /// Python-like f-string formatting via token stream syntax.
 ///
 /// This macro parses a raw token stream directly — no quotes needed. Text
@@ -618,28 +642,10 @@ impl syn::parse::Parse for Ts {
 /// ```
 #[proc_macro]
 pub fn t(input: TokenStream) -> TokenStream {
-    let ts = syn::parse_macro_input!(input as Ts);
-    let results = ts.results;
-    let args = results
-        .iter()
-        .filter(|t| t.is_expr())
-        .map(|t| t.expr().unwrap())
-        .collect::<Vec<_>>();
-    let mut s = results
-        .iter()
-        .map(|t| t.value(!args.is_empty()))
-        .collect::<String>();
-
-    let span = proc_macro2::Span::call_site();
-
-    if let Some(first_span) = ts.first_span
-        && span.start().line < first_span.start().line
-    {
-        s.insert_str(0, &" ".repeat(first_span.start().column))
-    }
-
-    let s = unindent::dedent(&s);
-
+    let (s, args) = match parse_t(input) {
+        Ok(r) => r,
+        Err(e) => return e.to_compile_error().into(),
+    };
     let lit = syn::LitStr::new(&s, proc_macro2::Span::call_site());
     match (args.is_empty(), s.is_empty()) {
         (true, false) => quote::quote! {
@@ -650,6 +656,36 @@ pub fn t(input: TokenStream) -> TokenStream {
         },
         (false, false) => quote::quote! {
             format!(#lit, #(#args), *)
+        },
+        _ => unreachable!(),
+    }
+    .into()
+}
+
+/// Like [`t!`], but expands to [`println!`] instead of returning a `String`.
+///
+/// ```rust
+/// use f_string::t_println;
+///
+/// let name = "world";
+/// t_println!(Hello, {name}!);  // prints: Hello, world!
+/// ```
+#[proc_macro]
+pub fn t_println(input: TokenStream) -> TokenStream {
+    let (s, args) = match parse_t(input) {
+        Ok(r) => r,
+        Err(e) => return e.to_compile_error().into(),
+    };
+    let lit = syn::LitStr::new(&s, proc_macro2::Span::call_site());
+    match (args.is_empty(), s.is_empty()) {
+        (true, false) => quote::quote! {
+            println!(#lit)
+        },
+        (true, true) => quote::quote! {
+            println!()
+        },
+        (false, false) => quote::quote! {
+            println!(#lit, #(#args), *)
         },
         _ => unreachable!(),
     }

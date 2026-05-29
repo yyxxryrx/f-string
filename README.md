@@ -18,6 +18,7 @@ f-string = "0.1"
 |-------|-----------------------|---------------------------------------|----------|--------------|
 | `f!`  | `f!("string {expr}")` | Familiar Python f-string syntax       | Unstable | `f-macro`    |
 | `t!`  | `t!(string {expr})`   | Native token syntax, no quotes needed | Stable   | (default)    |
+| `t_println!` | `t_println!(string {expr})` | Like `t!`, but prints directly via `println!` | Stable | (default) |
 
 Both macros expand to [`format!`](https://doc.rust-lang.org/std/macro.format.html) (or `String::from`/`String::new` when
 no expressions are present) at compile time, with no runtime overhead.
