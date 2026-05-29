@@ -3,7 +3,8 @@
 [![Crates.io](https://img.shields.io/crates/v/f-string.svg)](https://crates.io/crates/f-string)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A procedural macro library that provides arbitrary expression interpolation and Python-like f-string formatting for Rust.
+A procedural macro library that provides arbitrary expression interpolation and Python-like f-string formatting for
+Rust.
 
 ```toml
 [dependencies]
@@ -14,11 +15,11 @@ f-string = "0.1"
 
 ## Macros
 
-| Macro | Syntax                | Use case                              | State    | Feature flag |
-|-------|-----------------------|---------------------------------------|----------|--------------|
-| `f!`  | `f!("string {expr}")` | Familiar Python f-string syntax       | Unstable | `f-macro`    |
-| `t!`  | `t!(string {expr})`   | Native token syntax, no quotes needed | Stable   | (default)    |
-| `t_println!` | `t_println!(string {expr})` | Like `t!`, but prints directly via `println!` | Stable | (default) |
+| Macro        | Syntax                      | Use case                                      | State    | Feature flag |
+|--------------|-----------------------------|-----------------------------------------------|----------|--------------|
+| `f!`         | `f!("string {expr}")`       | Familiar Python f-string syntax               | Unstable | `f-macro`    |
+| `t!`         | `t!(string {expr})`         | Native token syntax, no quotes needed         | Stable   | (default)    |
+| `t_println!` | `t_println!(string {expr})` | Like `t!`, but prints directly via `println!` | Stable   | (default)    |
 
 Both macros expand to [`format!`](https://doc.rust-lang.org/std/macro.format.html) (or `String::from`/`String::new` when
 no expressions are present) at compile time, with no runtime overhead.
@@ -127,17 +128,28 @@ let s = t!(Hello, {"world"}!);
 
 Two macros exist because they represent different trade-offs in Rust's macro system:
 
-- **`t!` (token-based):** Started as a test experiment (`t` for test), but turned out to be the more robust approach. It parses the native token stream, benefiting from full IDE support and the compiler's own error reporting. The trade-off: it operates within the Rust lexer's constraints — for example, `}}` is rejected before the macro ever sees it, so brace escaping is impossible.
-- **`f!` (string-based):** By taking a string literal, it bypasses the lexer's brace-matching rules, enabling true Python f-string syntax including `{{`/`}}` escaping. The trade-off: the hand-written string parser is less reliable, which is why it remains behind the `f-macro` feature flag.
+- **`t!` (token-based):** Started as a test experiment (`t` for test), but turned out to be the more robust approach. It
+  parses the native token stream, benefiting from full IDE support and the compiler's own error reporting. The
+  trade-off: it operates within the Rust lexer's constraints — for example, `}}` is rejected before the macro ever sees
+  it, so brace escaping is impossible.
+- **`f!` (string-based):** By taking a string literal, it bypasses the lexer's brace-matching rules, enabling true
+  Python f-string syntax including `{{`/`}}` escaping. The trade-off: the hand-written string parser is less reliable,
+  which is why it remains behind the `f-macro` feature flag.
 
 ---
 
 ## Limitations
 
 - Only works with string literals (runtime strings cannot be used).
-- Requires Rust edition 2024 or later. This is strictly necessary because the macros rely on new `Span` features in the 2024 edition to fully preserve formatting and provide accurate error reporting.
+- Requires Rust edition 2024 or later. This is strictly necessary because the macros rely on new `Span` features in the
+  2024 edition to fully preserve formatting and provide accurate error reporting.
 - `f!` needs `{{`/`}}` to escape braces.
-- `t!` cannot escape braces with `{{` / `}}`. Because Rust's lexer validates brace matching *before* procedural macros are expanded, `}}` will cause a compile error (unmatched `}`) before `t!` ever sees it. As a workaround, use `{ "{" }` or `{ "}" }`.
+- `t!` cannot escape braces with `{{` / `}}`. Because Rust's lexer validates brace matching *before* procedural macros
+  are expanded, `}}` will cause a compile error (unmatched `}`) before `t!` ever sees it. As a workaround, use `{ "{" }`
+  or `{ "}" }`.
+- `t!` is affected by Rust comments. The lexer strips `//` and `/* */` before the macro sees the token stream, so `//`
+  in your text will consume the rest of the line (e.g. `t!(https://example.com)` produces `"https:"`). Use `{ "" }` as a
+  zero-cost workaround: `t!(https:{"//example.com"})`.
 
 ---
 

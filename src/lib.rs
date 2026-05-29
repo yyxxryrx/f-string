@@ -626,6 +626,26 @@ fn parse_t(input: TokenStream) -> syn::Result<(String, Vec<syn::Expr>)> {
 /// Unlike `f!`, `t!` does not require a feature flag and is considered stable.
 /// Braces cannot be escaped — use `{ "{" }` instead of `{{`.
 ///
+/// ### Comments
+///
+/// Rust comments (`//`, `/* */`) are stripped by the lexer before the macro
+/// sees the token stream. This means a `//` in the middle of your text will
+/// consume the rest of the line:
+///
+/// ```ignore
+/// // The URL part after "https:" is lost to the comment:
+/// let url = t!(https://example.com); // expands to "https:"
+/// ```
+///
+/// Workaround: wrap the problematic part in `{ "" }`. Thanks to constant
+/// folding, this has no runtime cost:
+///
+/// ```rust
+/// # use f_string::t;
+/// let url = t!(https:{"//example.com"});
+/// assert_eq!(url, "https://example.com");
+/// ```
+///
 /// ### Constant folding for string literals
 ///
 /// If the expression inside `{...}` is a bare string literal with no format
