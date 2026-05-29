@@ -63,13 +63,13 @@ fn expr_format() {
     assert_eq!(
         t! {
             <div>
-            <p class="title">Point</p>
-            <span>x={p.x}</span>
-            <span>y={p.y}</span>
+                <p class="title">Point</p>
+                <span>x={p.x}</span>
+                <span>y={p.y}</span>
             </div>
         },
         format!(
-            "<div>\n<p class=\"title\">Point</p>\n<span>x={}</span>\n<span>y={}</span>\n</div>",
+            "<div>\n    <p class=\"title\">Point</p>\n    <span>x={}</span>\n    <span>y={}</span>\n</div>",
             p.x, p.y
         )
     )

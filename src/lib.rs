@@ -1,3 +1,5 @@
+mod unindent;
+
 #[cfg(feature = "f-macro")]
 use nom::{
     AsChar, IResult, Parser,
@@ -235,7 +237,7 @@ fn parse(input: &str) -> IResult<&str, Ty> {
         parse_expr,
         parse_str,
     ))
-    .parse(input)
+        .parse(input)
 }
 
 #[cfg(feature = "f-macro")]
@@ -273,12 +275,12 @@ pub fn f(input: TokenStream) -> TokenStream {
         Ok(v) => v,
         Err(e) => return e.to_compile_error().into(),
     }
-    .value();
+        .value();
     if value.is_empty() {
         return quote::quote! {
             String::new()
         }
-        .into();
+            .into();
     }
     let r = match parse_all(&value) {
         Ok((_, tys)) => tys,
@@ -308,7 +310,7 @@ pub fn f(input: TokenStream) -> TokenStream {
             format!(#s, #(#args),*)
         }
     }
-    .into()
+        .into()
 }
 
 enum Ty2 {
@@ -353,19 +355,21 @@ impl std::fmt::Display for Ty2 {
 
 struct Ts {
     results: Vec<Ty2>,
+    first_span: Option<proc_macro2::Span>,
     last_span: Option<proc_macro2::Span>,
 }
 
 macro_rules! update {
     ($t:ident, $s:ident, $r:ident) => {
         let (l, c) = $s.map(|s| sub_span2($t.span(), s)).unwrap_or_default();
-        update!(l: l, c: c, $r);
+        update!(l: l, c: c, s: $t.span().start().column, $r);
     };
-    (l: $l: expr, c: $c: expr, $r:ident) => {
+    (l: $l: expr, c: $c: expr, s: $s: expr, $r:ident) => {
         let l = $l;
         let c = $c;
         if l > 0 {
             $r.push_str(&"\n".repeat(l));
+            $r.push_str(&" ".repeat($s));
         } else if c > 0 {
             $r.push_str(&" ".repeat(c));
         }
@@ -411,9 +415,13 @@ fn p<'c, 'a>(
 }
 
 macro_rules! repeat {
-    ($mac:ident, $d:ident, $input:expr, $res:ident, $s:ident, $prev:ident) => {
+    ($mac:ident, $d:ident, $input:expr, $res:ident, $s:ident, $prev:ident, $first:ident) => {
         let content;
         let s = syn::$mac!(content in $input).span;
+
+        if $first.is_none() {
+            $first = Some(s.span());
+        }
 
         update!(s, $prev, $s);
         $prev = Some(s.span());
@@ -424,7 +432,7 @@ macro_rules! repeat {
         // 计算括号内开头的空白部分
         let mut head = String::new();
         let (l, c) = sub_start_span2(content.span(), s.span());
-        update!(l: l, c: c.saturating_sub(1), head);
+        update!(l: l, c: c.saturating_sub(1), s: content.span().start().column, head);
 
         let mut ts = content.parse::<Self>()?;
 
@@ -436,7 +444,7 @@ macro_rules! repeat {
         if let Some(last_span) = ts.last_span {
             let mut tail = String::new();
             let (l, c) = sub_end_span2(s.span(), last_span);
-            update!(l: l, c: c.saturating_sub(1), tail);
+            update!(l: l, c: c.saturating_sub(1), s: s.span().start().column, tail);
             $res.push(Ty2::Str(tail));
         }
 
@@ -450,6 +458,7 @@ impl syn::parse::Parse for Ts {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut results = vec![];
         let mut string = String::new();
+        let mut first_span: Option<proc_macro2::Span> = None;
         let mut prev_span: Option<proc_macro2::Span> = None;
         while !input.is_empty() {
             if input.peek(syn::token::Paren) {
@@ -459,17 +468,22 @@ impl syn::parse::Parse for Ts {
                     input,
                     results,
                     string,
-                    prev_span
+                    prev_span,
+                    first_span
                 );
                 continue;
             }
             if input.peek(syn::token::Bracket) {
-                repeat!(bracketed, Bracket, input, results, string, prev_span);
+                repeat!(bracketed, Bracket, input, results, string, prev_span, first_span);
                 continue;
             }
             if input.peek(syn::token::Brace) {
                 let content;
                 let s = syn::braced!(content in input).span;
+
+                if first_span.is_none() {
+                    first_span = Some(s.span());
+                }
 
                 update!(s, prev_span, string);
                 prev_span = Some(s.span());
@@ -499,12 +513,16 @@ impl syn::parse::Parse for Ts {
                 Some(input.step(|cursor| {
                     p(&cursor, &mut string, prev_span).map_err(|e| cursor.error(e))
                 })?);
+            if first_span.is_none() {
+                first_span = prev_span;
+            }
         }
         if !string.is_empty() {
             results.push(Ty2::Str(string.clone()));
         }
         Ok(Self {
             results,
+            first_span,
             last_span: prev_span,
         })
     }
@@ -565,10 +583,14 @@ pub fn t(input: TokenStream) -> TokenStream {
         .filter(|t| t.is_expr())
         .map(|t| t.expr().unwrap())
         .collect::<Vec<_>>();
-    let s = results
+    let mut s = results
         .iter()
         .map(|t| t.value(!args.is_empty()))
         .collect::<String>();
+    if let Some(first_span) = ts.first_span {
+        s.insert_str(0, &" ".repeat(first_span.start().column))
+    }
+    let s = unindent::dedent(&s);
     let lit = syn::LitStr::new(&s, proc_macro2::Span::call_site());
     match (args.is_empty(), s.is_empty()) {
         (true, false) => quote::quote! {
@@ -582,5 +604,5 @@ pub fn t(input: TokenStream) -> TokenStream {
         },
         _ => unreachable!(),
     }
-    .into()
+        .into()
 }
