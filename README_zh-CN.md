@@ -1,13 +1,11 @@
 # f-string
 
-为 Rust 提供类似 Python f-string 字符串插值功能的过程宏库。
+为 Rust 提供支持任意表达式插值的 f-string 过程宏库。
 
 ```toml
 [dependencies]
 f-string = "0.1"
 ```
-
-`unindent`模块改编自MIT授权的[`textwrap`](https://crates.io/crates/textwrap) crate。
 
 
 ---
@@ -120,11 +118,21 @@ let s = t!(Hello, {"world"}!);
 ## 限制
 
 - 仅支持字符串字面量（无法用于运行时字符串）。
-- 需要 Rust edition 2024 或更高版本。
-- `f!` 使用 `{{`/`}}` 转义花括号；`t!` 无法转义（可用 `{ "{" }` 替代）。
+- 需要 Rust edition 2024 或更高版本。这是必要的，因为宏依赖 2024 edition 新增的 `Span` 特性来保留格式和提供准确的错误信息。
+- `f!` 使用 `{{`/`}}` 转义花括号。
+- `t!` 无法使用 `{{`/`}}` 转义花括号。Rust 的 lexer 会在宏展开之前验证花括号匹配，因此 `}}` 会导致编译错误。解决办法：用 `{ "{" }` 或 `{ "}" }` 替代。
 
 ---
+
+## 设计思路：`f!` vs `t!`
+
+两个宏代表了 Rust 宏系统中两种不同的权衡：
+
+- **`t!`（基于 Token）：** 最初是试验性产物（`t` 即 test），结果证明是更稳健的方案。它解析原生 Token 流，能享受完整的 IDE 支持和编译器报错。代价是它受限于 Rust lexer 的约束——例如 `}}` 在宏看到它之前就被 lexer 拒绝了，无法实现花括号转义。
+- **`f!`（基于字符串）：** 通过接受字符串字面量，绕过了 lexer 的花括号匹配规则，可以实现真正的 Python f-string 语法，包括 `{{`/`}}` 转义。代价是手写的字符串解析器不够可靠，因此它仍被放在 `f-macro` 特性开关后面。
 
 ## 许可证
 
 MIT
+
+`unindent` 模块改编自 [`textwrap`](https://crates.io/crates/textwrap) crate，使用 MIT 许可。

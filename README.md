@@ -3,14 +3,12 @@
 [![Crates.io](https://img.shields.io/crates/v/f-string.svg)](https://crates.io/crates/f-string)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A procedural macro library that provides Python-like f-string formatting for Rust.
+A procedural macro library that provides arbitrary expression interpolation and Python-like f-string formatting for Rust.
 
 ```toml
 [dependencies]
 f-string = "0.1"
 ```
-
-The `unindent` module is adapted from the [`textwrap`](https://crates.io/crates/textwrap) crate, MIT-licensed.
 
 ---
 
@@ -124,16 +122,26 @@ at compile time, eliminating even the `format!` call overhead:
 let s = t!(Hello, {"world"}!);
 ```
 
+### Design Philosophy: `f!` vs `t!`
+
+Two macros exist because they represent different trade-offs in Rust's macro system:
+
+- **`t!` (token-based):** Started as a test experiment (`t` for test), but turned out to be the more robust approach. It parses the native token stream, benefiting from full IDE support and the compiler's own error reporting. The trade-off: it operates within the Rust lexer's constraints — for example, `}}` is rejected before the macro ever sees it, so brace escaping is impossible.
+- **`f!` (string-based):** By taking a string literal, it bypasses the lexer's brace-matching rules, enabling true Python f-string syntax including `{{`/`}}` escaping. The trade-off: the hand-written string parser is less reliable, which is why it remains behind the `f-macro` feature flag.
+
 ---
 
 ## Limitations
 
 - Only works with string literals (runtime strings cannot be used).
-- Requires Rust edition 2024 or later.
-- `f!` needs `{{`/`}}` to escape braces; `t!` cannot escape braces (use `{ "{" }` as a workaround).
+- Requires Rust edition 2024 or later. This is strictly necessary because the macros rely on new `Span` features in the 2024 edition to fully preserve formatting and provide accurate error reporting.
+- `f!` needs `{{`/`}}` to escape braces.
+- `t!` cannot escape braces with `{{` / `}}`. Because Rust's lexer validates brace matching *before* procedural macros are expanded, `}}` will cause a compile error (unmatched `}`) before `t!` ever sees it. As a workaround, use `{ "{" }` or `{ "}" }`.
 
 ---
 
 ## License
 
 MIT
+
+The `unindent` module is adapted from the [`textwrap`](https://crates.io/crates/textwrap) crate, MIT-licensed.

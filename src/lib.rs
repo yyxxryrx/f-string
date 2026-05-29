@@ -1,3 +1,26 @@
+//! Python-like f-string formatting for Rust.
+//!
+//! This crate provides two procedural macros for string interpolation with
+//! arbitrary expressions and full [`format!`] specifier support:
+//!
+//! | Macro | Syntax | Use case |
+//! |---|---|---|
+//! | [`f!`] | `f!("string {expr}")` | Quoted string literals, like Python f-strings |
+//! | [`t!`] | `t!(string {expr})` | Native token syntax, no quotes needed |
+//!
+//! Both macros expand at compile time with zero runtime overhead.
+//!
+//! # Quick start
+//!
+//! ```rust
+//! use f_string::t;
+//!
+//! let name = "world";
+//! let s = t!(Hello, {name}!);
+//! ```
+//!
+//! See the individual macro docs for details and more examples.
+
 mod unindent;
 
 #[cfg(feature = "f-macro")]
