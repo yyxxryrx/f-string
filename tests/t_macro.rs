@@ -89,3 +89,15 @@ fn expr_format() {
         )
     )
 }
+
+#[test]
+fn line_breaks_in_parentheses() {
+    assert_eq!(
+        t! {
+            shall not include works that remain separable from, or merely link (or bind by
+            name) to the interfaces of, the Work and Derivative Works thereof.
+        },
+        "shall not include works that remain separable from, or merely link (or bind by
+name) to the interfaces of, the Work and Derivative Works thereof."
+    );
+}

@@ -471,8 +471,8 @@ macro_rules! repeat {
             $res.push(Ty2::Str(tail));
         }
 
-        let ts_span = ts.last_span;
-        update!(s, ts_span, $s);
+        // let ts_span = ts.last_span;
+        // update!(s, ts_span, $s);
         $s += Delimiter::$d.close();
     };
 }
