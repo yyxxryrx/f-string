@@ -3,6 +3,12 @@ use f_string::t;
 #[test]
 fn pure_text() {
     assert_eq!(t!(), String::new());
+    assert_eq!(
+        t!(
+            // Here is the note
+        ),
+        String::new()
+    );
     assert_eq!(t!(Hello), String::from("Hello"));
     assert_eq!(t!(Hello, World!), String::from("Hello, World!"));
     assert_eq!(t!(A( B) C[D ] E), String::from("A( B) C[D ] E"));
